@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 require("dotenv").config();
 interface Server {
   listen: (port: string | number, callback: () => void) => void;

@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response,NextFunction } from "express";
 import AuthRouter from "../routes/auth/AuthRoutes";
 import Dbconnection from "../database/dbConnection";
 import cors from "cors";
@@ -13,6 +13,17 @@ app.use(cors({ origin: Origins , credentials: true}));
 // app.get("/", (req: Request, res: Response) => {
 //   res.send({ htm: "Hello" });
 // });
+
+app.use((error: Error, req:Request, res:Response, next:NextFunction )=>{
+ const statusCode = res.statusCode  || 500;
+ const errormsg = error.message || "Internal Server Error";
+ return res.status(statusCode).json({
+    success: false,
+    errormsg,
+    statusCode,
+ })
+
+})
 
 Dbconnection(app);
 
