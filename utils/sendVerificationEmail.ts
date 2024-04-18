@@ -1,8 +1,8 @@
 import { SendMail } from "./sendMail";
 
-export default function sendVerificationEmail({name, email, verificationToken, origin}: {name: string | null | undefined, email: string| null | undefined, verificationToken:string| null | undefined,  origin: string| null | undefined;}) {
+export default function sendVerificationEmail({name, email, verificationToken, origin}: {name: string, email: string, verificationToken:string,  origin: string;}) {
     
-    const verifyEmail = `${origin}/user/verify-email?token=${verificationToken}&email=${email}`;
+    const verifyEmail = `${origin}/auth/verifyemail?token=${verificationToken}&email=${email}`;
 
     const message= `<p>Please confirm your email by clicking on the following link :
     <a href="${verifyEmail}"> Verify Email </a></p>`;

@@ -31,6 +31,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/mongoose": "^5.11.97",
     "@types/node": "^20.11.30",
+    "@types/nodemailer": "^6.4.14",
     "@types/validator": "^13.11.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.3"

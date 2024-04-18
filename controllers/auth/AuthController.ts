@@ -6,13 +6,14 @@ import { log } from "console";
 import { BadRequestError, UnAuthorized } from "../../errors";
 import crypto from "crypto";
 import sendVerificationEmail from "../../utils/sendVerificationEmail";
-import httpStatus from "http-status";
+import httpStatus, { BAD_REQUEST } from "http-status";
 interface Userbody{
     username: string;
     password: string;
     email: string;
 }
 async function Signup(req: Request, res: Response, next: NextFunction) {
+  console.log('auth controller hit successfully')
     const { username, email, password } : Userbody = req.body;
     const hashpassword = bcryptjs.hashSync(password, 10);
     
@@ -20,12 +21,13 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
     const EmailAlreadyExist = await userModel.findOne({ email });
 
     if(EmailAlreadyExist){
-      throw new BadRequestError('Email already exist')
+    return  res.status(BAD_REQUEST).json({ message: "Email already exist" })
+        // throw new BadRequestError('Email already exist')
     }
-  
-     const isfirstAccount = (await userModel.countDocuments({})) === 0; 
+    //  const isfirstAccount = (await userModel.countDocuments({})) === 0; 
 
-     const role = isfirstAccount ? "admin" : "user";
+    //  const role = isfirstAccount ? "admin" : "user";
+
 
      const verificationToken =  crypto.randomBytes(40).toString('hex')
      try {
@@ -59,6 +61,7 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
      next(error)
    
     }
+    
 }
 
 
@@ -66,8 +69,8 @@ async function verifyEmail(req:Request, res:Response)  {
 
   try {
     
-    const {verificationToken, email} : {verificationToken: string, email: string} = req.body;
-      const user =  await  userModel.findOne({ email })
+    const {verificationToken, } : {verificationToken: string, } = req.body;
+      const user =  await  userModel.findOne({ verificationToken })
       if(!user){
        throw new UnAuthorized('verification failed')
       }
@@ -75,14 +78,18 @@ async function verifyEmail(req:Request, res:Response)  {
         if(user.verificationToken !== verificationToken  ){
           throw new UnAuthorized('verification failed')
         }
-    
-        user.isVerified = true;
-        user.verified = new Date();
-        await user.save();
-    
-        res.status(httpStatus.CREATED).json({ message: "Email verified"})
+
+          
+              user.isVerified = true;
+              user.verified = new Date();
+              user.verificationToken = ""; 
+              await user.save();
+          
+              res.status(httpStatus.CREATED).json({ message: "Email verified", isverified:user.isVerified, email:user.email });
+
+        
   } catch (error: Error | any)  {
-   res.status(httpStatus.INTERNAL_SERVER_ERROR).json({message: error.message})
+   res.status(httpStatus.BAD_REQUEST).json({message: error.message})
   }
 }
 async function Signin(req: Request, res: Response, next:NextFunction) {
@@ -106,4 +113,4 @@ async function Signin(req: Request, res: Response, next:NextFunction) {
 
 }
 
-export { Signup, Signin };
+export { Signup, Signin ,verifyEmail};

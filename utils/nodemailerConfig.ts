@@ -1,8 +1,13 @@
+require('dotenv').config()
+
 export default{
-    host: "smtp.ettheral.email",
-    port: 587,
+    host: "smtp.gmail.com",
+    port: 465,
     auth: {
-        user: "tomie.schamberger93@etheral.email",
-        pass: "pvobjdx5390f-ct-n",
+        user: process.env.MAILING_USER,
+        pass: process.env.MAILING_PASSWORD,
     }
 }
+
+
+

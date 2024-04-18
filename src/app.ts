@@ -4,26 +4,32 @@ import Dbconnection from "../database/dbConnection";
 import cors from "cors";
 
 const app: Express = express();
-
+app.use(cors({ origin: "http://localhost:3000" , credentials: true, methods: ["GET,HEAD,PUT,PATCH,POST,DELETE"] }));
 const Origins = ["http://localhost:3001", "http://localhost:3000"]
 app.use(express.json());
 app.use("/client/api/auth", AuthRouter);
-app.use(cors({ origin: Origins , credentials: true}));
+const corsOptions ={
+    origin:'http://localhost:3000', 
+    credentials:true,            //access-control-allow-credentials:true
+    optionSuccessStatus:200
+}
+
 
 // app.get("/", (req: Request, res: Response) => {
 //   res.send({ htm: "Hello" });
 // });
 
-app.use((error: Error, req:Request, res:Response, next:NextFunction )=>{
- const statusCode = res.statusCode  || 500;
- const errormsg = error.message || "Internal Server Error";
- return res.status(statusCode).json({
-    success: false,
-    errormsg,
-    statusCode,
- })
+// app.use((error: Error, req:Request, res:Response, next:NextFunction )=>{
+//  const statusCode = res.statusCode  || 500;
+//  const errormsg = error.message || "Internal Server Error";
+//  return res.status(statusCode).json({
+//     success: false,
+//     errormsg,
+//     statusCode,
+//  })
 
-})
+// })
+
 
 Dbconnection(app);
 
