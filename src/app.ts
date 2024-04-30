@@ -7,7 +7,8 @@ import { config } from "dotenv";
 
 config()
 const app: Express = express();
-app.use(cors({ origin: "http://localhost:3000" , credentials: true, methods: ["GET,HEAD,PUT,PATCH,POST,DELETE"] }));
+const origin = ["http://localhost:3000", "http://localhost:3001"];
+app.use(cors({ origin: origin , credentials: true, methods: ["GET,HEAD,PUT,PATCH,POST,DELETE"] }));
 const Origins = ["http://localhost:3001", "http://localhost:3000"]
 app.use(cookieParser(process.env.JWT_SECRET_KEY));
 app.use(express.json());

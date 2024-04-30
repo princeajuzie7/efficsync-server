@@ -11,7 +11,7 @@ interface UserDocument extends Document {
   isVerified: boolean;
   verified: Date;
   passwordToken?: string;
-  passwordTokenExpiration?: Date;
+  passwordTokenExpiration: Date | string;
   comparePassword(userpassword: string): Promise<boolean>;
 }
 

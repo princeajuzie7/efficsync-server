@@ -10,11 +10,16 @@ import httpStatus, { BAD_REQUEST, OK } from "http-status";
 import createTokenUser from "../../utils/createTokenUser";
 import TokenModel from "../../models/TokenModel";
 import { attachCookiesToResponse } from "../../utils/jwt";
+import sendPasswordResetToken from "../../utils/sendPasswordResetToken";
+import createHash from "../../utils/createHash";
 interface Userbody {
   username: string;
   password: string;
   email: string;
 }
+const origin = "http://localhost:3000";
+    
+    const serveorigin = "http://localhost:8000/client/api";
 async function Signup(req: Request, res: Response, next: NextFunction) {
   console.log("auth controller hit successfully");
   const { username, email, password }: Userbody = req.body;
@@ -38,7 +43,7 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
       verificationToken,
     });
 
-    const origin = "http://localhost:3000";
+
 
     await sendVerificationEmail({
       name: newUser?.username,
@@ -72,6 +77,8 @@ async function verifyEmail(req: Request, res: Response) {
       verificationToken,
       email,
     }: { verificationToken: string; email: string } = req.body;
+   
+
     const user = await userModel.findOne({ email });
     if (!user) {
       throw new UnAuthorized("verification failed");
@@ -95,6 +102,8 @@ async function verifyEmail(req: Request, res: Response) {
     res.status(httpStatus.BAD_REQUEST).json({ message: error.message });
   }
 }
+
+
 async function Signin(req: Request, res: Response, next: NextFunction) {
   const { email, password }: { email: string; password: string } = req.body;
 
@@ -150,4 +159,142 @@ async function Signin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export { Signup, Signin, verifyEmail };
+/**
+ * ForgotPassword function is used to send a password reset token to the user's email address.
+ * @param req - Express request object containing the user's email address.
+ * @param res - Express response object used to send the success message.
+ * @param next - Express next function used to handle errors.
+ * @returns A response with a success message and a status code of 200 (OK).
+ * @throws BadRequestError if the email does not exist.
+ */
+async function forgotPassword(req: Request, res: Response, next: NextFunction) {
+  const { email } = req.body;
+  
+  try {
+    
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      throw new BadRequestError("Email does not exist");
+    }
+
+    const passwordResetToken = crypto.randomBytes(70).toString('hex')
+    await sendPasswordResetToken({
+      passwordResetToken,
+      username: user.username,
+      email: user.email,
+      origin: serveorigin,
+    });   
+    const tenminutes = 1000 * 60 * 10;
+    const passwordRestTokenExipiry = new Date(Date.now() + tenminutes)
+     user.passwordToken = createHash(passwordResetToken);
+    user.passwordTokenExpiration = passwordRestTokenExipiry;
+    await user.save();
+    res.status(httpStatus.OK).json({
+      message: "Please check your email to reset your password",
+    });
+  } catch(error) {
+    next(error) 
+  }
+
+
+    
+   
+}
+
+async function verifyPasswordResetToken(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const { token } = req.params;
+  const encryptedToken = createHash(token);
+  const currentDate =  Date.now();
+  try {
+    const user = userModel.findOne({
+      passwordToken: encryptedToken,
+      passwordTokenExpiration: { $gt: currentDate },
+    });
+
+     if (!user || !token) {
+       return res.redirect(`${origin}/auth/forgotpassword`);
+       
+     }
+    
+       return res.redirect(`${origin}/auth/updatepassword?token=${token}`);
+  } catch (error:Error | any) {
+    throw new Error(error)
+      
+  }
+}
+ 
+
+
+async function updatePassword(req: Request, res: Response, next: NextFunction) {
+ 
+  const {
+    password,
+    confirmpassword,
+    token,
+  }: { password: string; confirmpassword: string; token : string| any} = req.body;
+  
+
+ 
+  
+  const currentDate = new Date();
+
+  try {
+    if (!password || !confirmpassword)
+    {
+      throw new BadRequestError("New password is required");
+    }
+
+      const encryptedToken = createHash(token);
+
+    
+    
+         const user = await userModel.findOne({
+           passwordToken: encryptedToken,
+           passwordTokenExpiration: { $gt: currentDate },
+         });
+       
+      console.log("encryptedToken", encryptedToken, "password");
+    if (!user) {
+      console.log('user', user)
+      throw new BadRequestError("Token is invalid or expired");
+    }
+
+    if (
+      user.passwordToken === createHash(token) &&
+      user.passwordTokenExpiration > currentDate
+    ) {
+
+      
+      user.password = password;
+          user.passwordToken = "";
+          user.passwordTokenExpiration = "";
+          console.log("updated successfully");
+          await user.save();
+          return res.status(httpStatus.OK).json({
+            message: "Password updated successfully",
+          });
+    
+    }
+
+    
+  } catch (error: Error | any) {
+    throw new Error(error)
+  }
+
+
+
+
+}
+
+export {
+  Signup,
+  Signin,
+  verifyEmail,
+  forgotPassword,
+  updatePassword,
+  verifyPasswordResetToken,
+};
