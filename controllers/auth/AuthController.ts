@@ -20,6 +20,15 @@ interface Userbody {
 const origin = "http://localhost:3000";
     
     const serveorigin = "http://localhost:8000/client/api";
+/**
+ * Signs up a new user.
+ * @param req - Express request object containing the username, email, and password.
+ * @param res - Express response object used to send the success message or error response.
+ * @param next - Express next function used to handle errors.
+ * @returns A response with a success message and a status code of 201 (Created) if the user is created successfully, otherwise an error response.
+ * @throws BadRequestError if the email already exists.
+ * @throws UnAuthorized if the provided credentials are invalid.
+ */
 async function Signup(req: Request, res: Response, next: NextFunction) {
   console.log("auth controller hit successfully");
   const { username, email, password }: Userbody = req.body;
@@ -30,9 +39,7 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
     return res.status(BAD_REQUEST).json({ message: "Email already exist" });
     // throw new BadRequestError('Email already exist')
   }
-  //  const isfirstAccount = (await userModel.countDocuments({})) === 0;
 
-  //  const role = isfirstAccount ? "admin" : "user";
 
   const verificationToken = crypto.randomBytes(40).toString("hex");
   try {
@@ -51,10 +58,54 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
       verificationToken: newUser?.verificationToken,
       origin,
     });
+    
+   
+    const user = await userModel.findOne({ email });
+    
+      if (!user) {
+        console.log("incorrect email ");
+        throw new UnAuthorized("invalid credentials");
+      }
+    
+    const ispasswordCorrect = await user.comparePassword(password);
+    console.log(ispasswordCorrect, "ispasswordCorrect");
+    if (!ispasswordCorrect) {
+      console.log("password incorrect");
+      throw new UnAuthorized("invalid credentials");
+    }
 
+    
+     const tokenUser = createTokenUser(user);
+     let refreshToken = "";
+     const existingToken = await TokenModel.findOne({ user: user._id });
+
+     if (existingToken) {
+       const { $isValid } = existingToken;
+       console.log("token existing");
+
+       if (!$isValid) {
+         throw new UnAuthorized("invalid credentials");
+       }
+       refreshToken = existingToken.refreshToken;
+
+       attachCookiesToResponse({ res, user: tokenUser, refreshToken });
+       res.status(OK).json({ user: tokenUser });
+       return;
+     }
+
+     refreshToken = crypto.randomBytes(40).toString("hex");
+     const userAgent = req.headers["user-agent"];
+     const ip = req.ip;
+     const userToken = { refreshToken, ip, userAgent, user: user._id };
+     await TokenModel.create(userToken);
+    attachCookiesToResponse({ res, user: tokenUser, refreshToken });
+    
     res.status(httpStatus.CREATED).json({
       message: "Success! Please check your mail to verify your account",
     });
+    
+
+
 
     log(newUser, "newUser");
   } catch (error: Error | any) {
@@ -77,7 +128,6 @@ async function verifyEmail(req: Request, res: Response) {
       verificationToken,
       email,
     }: { verificationToken: string; email: string } = req.body;
-   
 
     const user = await userModel.findOne({ email });
     if (!user) {
@@ -93,24 +143,62 @@ async function verifyEmail(req: Request, res: Response) {
     user.verificationToken = "";
     await user.save();
 
-    res.status(httpStatus.CREATED).json({
+    const tokenUser = createTokenUser(user);
+    let refreshToken = "";
+    const existingToken = await TokenModel.findOne({ user: user._id });
+
+    if (existingToken) {
+      const { $isValid } = existingToken;
+      console.log("token existing");
+
+      if (!$isValid) {
+        throw new UnAuthorized("invalid credentials");
+      }
+      refreshToken = existingToken.refreshToken;
+
+      attachCookiesToResponse({ res, user: tokenUser, refreshToken });
+      return res.status(httpStatus.OK).json({
+        message: "Email verified",
+        isverified: user.isVerified,
+        email: user.email,
+      });
+    }
+
+    refreshToken = crypto.randomBytes(40).toString("hex");
+    const userAgent = req.headers["user-agent"];
+    const ip = req.ip;
+    const userToken = { refreshToken, ip, userAgent, user: user._id };
+    await TokenModel.create(userToken);
+    attachCookiesToResponse({ res, user: tokenUser, refreshToken });
+
+    return res.status(httpStatus.CREATED).json({
       message: "Email verified",
       isverified: user.isVerified,
       email: user.email,
     });
   } catch (error: Error | any) {
-    res.status(httpStatus.BAD_REQUEST).json({ message: error.message });
+    return res.status(httpStatus.BAD_REQUEST).json({ message: error.message });
   }
 }
 
 
-async function Signin(req: Request, res: Response, next: NextFunction) {
-  const { email, password }: { email: string; password: string } = req.body;
 
+/**
+ * Signs in a user.
+ * @param req - Express request object containing the email and password.
+ * @param res - Express response object used to send the success message or error response.
+ * @param next - Express next function used to handle errors.
+ * @returns A response with a success message and a status code of 200 (OK) if the user is authenticated successfully, otherwise an error response.
+ * @throws BadRequestError if the email or password is missing.
+ * @throws UnAuthorized if the provided credentials are invalid.
+ */
+async function Signin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    if (!email || !password) {
+    if (!req.body.email || !req.body.password) {
       throw new BadRequestError("Please provide email and password");
     }
+
+    const { email, password }: { email: string; password: string } = req.body;
 
     const user = await userModel.findOne({ email });
     if (!user) {
@@ -125,9 +213,9 @@ async function Signin(req: Request, res: Response, next: NextFunction) {
       throw new UnAuthorized("invalid credentials");
     }
 
-    if (!user.isVerified) {
-      throw new UnAuthorized("Please verify your email first");
-    }
+    // if (!user.isVerified) {
+    //   throw new UnAuthorized("Please verify your email first");
+    // }
 
     const tokenUser = createTokenUser(user);
     let refreshToken = "";
@@ -141,7 +229,7 @@ async function Signin(req: Request, res: Response, next: NextFunction) {
         throw new UnAuthorized("invalid credentials");
       }
       refreshToken = existingToken.refreshToken;
-      
+
       attachCookiesToResponse({ res, user: tokenUser, refreshToken });
       res.status(OK).json({ user: tokenUser });
       return;
@@ -201,66 +289,73 @@ async function forgotPassword(req: Request, res: Response, next: NextFunction) {
    
 }
 
+/**
+ * Verifies a password reset token.
+ * @param req - Express request object containing the token.
+ * @param res - Express response object used to send the success message.
+ * @param next - Express next function used to handle errors.
+ * @returns A response with a success message and a status code of 200 (OK) if the token is valid, otherwise an error response.
+ * @throws UnAuthorized if the token is invalid or has expired.
+ */
 async function verifyPasswordResetToken(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   const { token } = req.body;
   const encryptedToken = createHash(token);
-  const currentDate =  Date.now();
+  const currentDate = Date.now();
   try {
-    const user = userModel.findOne({
+    const user = await userModel.findOne({
       passwordToken: encryptedToken,
       passwordTokenExpiration: { $gt: currentDate },
     });
 
     if (!user || !token) {
-       
       throw new UnAuthorized('invalid token or token expired');
-       
-     }
-    
-       return res.status(httpStatus.OK).json({message: "valid token"})
-  } catch (error:Error | any) {
-    throw new Error(error)
-      
+    }
+
+    res.status(httpStatus.OK).json({ message: "valid token" });
+  } catch (error: Error | any) {
+    throw new Error(error);
   }
 }
  
 
 
-async function updatePassword(req: Request, res: Response, next: NextFunction) {
- 
-  const {
-    password,
-    confirmpassword,
-    token,
-  }: { password: string; confirmpassword: string; token : string| any} = req.body;
-  
-
- 
-  
-  const currentDate = new Date();
-
+/**
+ * Updates the user's password.
+ * @param req - Express request object containing the new password, confirmation of the new password, and the token.
+ * @param res - Express response object used to send the success message.
+ * @param next - Express next function used to handle errors.
+ * @returns A response with a success message and a status code of 200 (OK) if the password is updated successfully, otherwise an error response.
+ * @throws BadRequestError if the new password is not provided.
+ * @throws BadRequestError if the confirmation of the new password is not provided.
+ * @throws BadRequestError if the token is invalid or expired.
+ * @throws Error if there is an error updating the password.
+ */
+async function updatePassword(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    if (!password || !confirmpassword)
-    {
+    if (!req.body.password || !req.body.confirmpassword) {
       throw new BadRequestError("New password is required");
     }
 
-      const encryptedToken = createHash(token);
+    const { password, confirmpassword, token } = req.body;
 
-    
-    
-         const user = await userModel.findOne({
-           passwordToken: encryptedToken,
-           passwordTokenExpiration: { $gt: currentDate },
-         });
-       
-      console.log("encryptedToken", encryptedToken, "password");
+    const currentDate = new Date();
+
+    const encryptedToken = createHash(token);
+
+    const user = await userModel.findOne({
+      passwordToken: encryptedToken,
+      passwordTokenExpiration: { $gt: currentDate },
+    });
+
     if (!user) {
-      console.log('user', user)
       throw new BadRequestError("Token is invalid or expired");
     }
 
@@ -268,27 +363,18 @@ async function updatePassword(req: Request, res: Response, next: NextFunction) {
       user.passwordToken === createHash(token) &&
       user.passwordTokenExpiration > currentDate
     ) {
-
-      
       user.password = password;
-          user.passwordToken = "";
-          user.passwordTokenExpiration = "";
-          console.log("updated successfully");
-          await user.save();
-          return res.status(httpStatus.OK).json({
-            message: "Password updated successfully",
-          });
-    
+      user.passwordToken = "";
+      user.passwordTokenExpiration = "";
+      console.log("updated successfully");
+      await user.save();
+      return res.status(httpStatus.OK).json({
+        message: "Password updated successfully",
+      });
     }
-
-    
   } catch (error: Error | any) {
-    throw new Error(error)
+    throw new Error(error);
   }
-
-
-
-
 }
 
 export {
