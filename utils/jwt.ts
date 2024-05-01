@@ -2,7 +2,14 @@ import  Jwt  from "jsonwebtoken";
 require('dotenv').config()
 import { Response } from "express";
 const secretKey = process.env.JWT_SECRET_KEY;
-export const createJWT = ({payload}: {payload:any})=>{
+
+
+interface Payload {
+  user: any; // Define the type for user
+  refreshToken?: string; // Make refreshToken optional
+}
+
+export const createJWT = ({ payload }: { payload: any }) => {
     if (!secretKey) {
         throw new Error("JWT secret key is not defined in environment variables");
     }
@@ -10,18 +17,19 @@ export const createJWT = ({payload}: {payload:any})=>{
     return token;
 }
 
-export const isTokenValid = (token: string) => {
-    if (!secretKey) {
-        throw new Error("JWT secret key is not defined in environment variables");
-    }
-    try {
-        Jwt.verify(token, secretKey);
-        return true; // Token is valid
-        
-    } catch (error) {
-        return false; // Token is invalid
-    }
-}
+export const isTokenValid = (token: string): Payload => {
+  if (!secretKey) {
+    throw new Error("JWT secret key is not defined in environment variables");
+  }
+  try {
+    const payload: Payload = Jwt.verify(token, secretKey) as Payload;
+    return payload; // Return payload if token is valid
+  } catch (error) {
+    throw new Error("Invalid token"); // Throw error if token is invalid
+  }
+};
+
+
 
 export const attachCookiesToResponse = ({res, user, refreshToken}: {res: Response, user:any, refreshToken:string})=>{
     const acccessTokenJWT = createJWT({payload: {user}})
