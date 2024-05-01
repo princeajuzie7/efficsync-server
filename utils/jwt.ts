@@ -1,6 +1,11 @@
 import  Jwt  from "jsonwebtoken";
 require('dotenv').config()
 import { Response } from "express";
+
+
+/**
+ * @env {environmentvariable} env variable for jwt secret key
+ */
 const secretKey = process.env.JWT_SECRET_KEY;
 
 /**
