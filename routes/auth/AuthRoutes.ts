@@ -18,7 +18,7 @@ AuthRouter.route('/verifyemail').post(verifyEmail)
 AuthRouter.route("/forgotpassword").post(forgotPassword);
 
 AuthRouter.route('/updatepassword').post(updatePassword);
-AuthRouter.route("/verifypasswordresetoken/:token").get(
+AuthRouter.route("/verifypasswordresetoken/").post(
   verifyPasswordResetToken
 );
 

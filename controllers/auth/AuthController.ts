@@ -182,7 +182,7 @@ async function forgotPassword(req: Request, res: Response, next: NextFunction) {
       passwordResetToken,
       username: user.username,
       email: user.email,
-      origin: serveorigin,
+      origin: origin,
     });   
     const tenminutes = 1000 * 60 * 10;
     const passwordRestTokenExipiry = new Date(Date.now() + tenminutes)
@@ -206,7 +206,7 @@ async function verifyPasswordResetToken(
   res: Response,
   next: NextFunction
 ) {
-  const { token } = req.params;
+  const { token } = req.body;
   const encryptedToken = createHash(token);
   const currentDate =  Date.now();
   try {
@@ -215,12 +215,13 @@ async function verifyPasswordResetToken(
       passwordTokenExpiration: { $gt: currentDate },
     });
 
-     if (!user || !token) {
-       return res.redirect(`${origin}/auth/forgotpassword`);
+    if (!user || !token) {
+       
+      throw new UnAuthorized('invalid token or token expired');
        
      }
     
-       return res.redirect(`${origin}/auth/updatepassword?token=${token}`);
+       return res.status(httpStatus.OK).json({message: "valid token"})
   } catch (error:Error | any) {
     throw new Error(error)
       
