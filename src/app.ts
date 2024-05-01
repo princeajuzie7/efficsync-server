@@ -4,40 +4,63 @@ import Dbconnection from "../database/dbConnection";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { config } from "dotenv";
-
 config()
+
+/**
+ * Initializes the Express application.
+ * @param none
+ * @returns Express application instance.
+ */
 const app: Express = express();
-const origin = ["http://localhost:3000", "http://localhost:3001"];
+
+/**
+ * Sets the origins allowed to send requests to the Express application.
+ * @param none
+ * @returns none
+ */
+const origin = ["http://localhost:3001", "http://localhost:3000"];
+
+/**
+ * Configures CORS settings for the Express application.
+ * @param none
+ * @returns none
+ */
 app.use(cors({ origin: origin , credentials: true, methods: ["GET,HEAD,PUT,PATCH,POST,DELETE"] }));
-const Origins = ["http://localhost:3001", "http://localhost:3000"]
+
+
+
+/**
+ * Parses cookies for the Express application.
+ * @param none
+ * @returns none
+ */
 app.use(cookieParser(process.env.JWT_SECRET_KEY));
+
+/**
+ * Parses JSON data for the Express application.
+ * @param none
+ * @returns none
+ */
 app.use(express.json());
+
+/**
+ * Mounts the AuthRouter to the specified path.
+ * @param none
+ * @returns none
+ */
 app.use("/client/api/auth", AuthRouter);
 
-const corsOptions ={
-    origin:'http://localhost:3000', 
-    credentials:true,            //access-control-allow-credentials:true
-    optionSuccessStatus:200
-}
-
-
-// app.get("/", (req: Request, res: Response) => {
-//   res.send({ htm: "Hello" });
-// });
-
-// app.use((error: Error, req:Request, res:Response, next:NextFunction )=>{
-//  const statusCode = res.statusCode  || 500;
-//  const errormsg = error.message || "Internal Server Error";
-//  return res.status(statusCode).json({
-//     success: false,
-//     errormsg,
-//     statusCode,
-//  })
-
-// })
-
-
+/**
+ * Connects the Express application to the database.
+ * @param app Express application instance.
+ * @returns none
+ */
 Dbconnection(app);
 
 
-export default app
+/**
+ * Exports the Express application instance.
+ * @param none
+ * @returns Express application instance.
+ */
+export default app;
