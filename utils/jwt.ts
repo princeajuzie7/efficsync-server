@@ -1,5 +1,5 @@
-import  Jwt  from "jsonwebtoken";
-require('dotenv').config()
+import jwt from "jsonwebtoken";
+require("dotenv").config();
 import { Response } from "express";
 /**
  * @env {}
@@ -25,14 +25,13 @@ interface Payload {
  * @throws {Error} - If the secret key is not defined in environment variables.
  */
 
-export const createJWT = ({payload}: {payload:any})=>{
-    if (!secretKey) {
-        throw new Error("JWT secret key is not defined in environment variables");
-    }
-    const token = Jwt.sign(payload,secretKey)
-    return token;
-}
-
+export const createJWT = ({ payload }: { payload: any }) => {
+  if (!secretKey) {
+    throw new Error("JWT secret key is not defined in environment variables");
+  }
+  const token = jwt.sign(payload, secretKey);
+  return token;
+};
 
 /**
  * Verifies a JSON Web Token and returns the payload if the token is valid.
@@ -45,35 +44,41 @@ export function isTokenValid(token: string): Payload {
     throw new Error("JWT secret key is not defined in environment variables.");
   }
   try {
-    const payload: Payload = Jwt.verify(token, secretKey) as Payload;
+    const payload: Payload = jwt.verify(token, secretKey) as Payload;
     return payload;
   } catch (error) {
     throw new Error("Invalid token");
   }
 }
 
+export const attachCookiesToResponse = ({
+  res,
+  user,
+  refreshToken,
+}: {
+  res: Response;
+  user: any;
+  refreshToken: string;
+}) => {
+  const acccessTokenJWT = createJWT({ payload: { user } });
+  const refreshTokenJWT = createJWT({ payload: { user, refreshToken } });
 
+  const oneDay = 1000 * 60 * 60 * 24;
+  const longerEXP = 1000 * 60 * 60 * 24 * 30;
 
-export const attachCookiesToResponse = ({res, user, refreshToken}: {res: Response, user:any, refreshToken:string})=>{
-    const acccessTokenJWT = createJWT({payload: {user}})
-    const refreshTokenJWT = createJWT({payload: {user, refreshToken}})
-    
-    const oneDay = 1000 * 60 *60 *24;
-    const longerEXP = 1000 *60 *60 *24 *30;
+  res.cookie("accessToken", acccessTokenJWT, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    signed: true,
+    expires: new Date(Date.now() + oneDay),
+    sameSite: "strict",
+  });
 
-    res.cookie('accessToken', acccessTokenJWT, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        signed: true,
-        expires: new Date(Date.now() + oneDay),
-    })
-
-    res.cookie('refreshToken', refreshTokenJWT, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        signed: true,
-        expires: new Date(Date.now() + longerEXP)
-    })
-
-}
-
+  res.cookie("refreshToken", refreshTokenJWT, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    signed: true,
+    expires: new Date(Date.now() + longerEXP),
+    sameSite: "strict"
+  });
+};

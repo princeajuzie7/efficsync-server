@@ -6,6 +6,8 @@ import {
   forgotPassword,
   updatePassword,
   verifyPasswordResetToken,
+  GoogleAuth,
+  GoogleAuthCallback,
 } from "../../controllers/auth";
 
 /**
@@ -81,6 +83,10 @@ AuthRouter.route("/verifypasswordresetoken/").post(
   verifyPasswordResetToken
 );
 
+
+AuthRouter.route("/googleauth").get(GoogleAuth);
+
+AuthRouter.route('/googleauth/callback').get(GoogleAuthCallback)
 
 
 

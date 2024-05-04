@@ -12,6 +12,9 @@ import TokenModel from "../../models/TokenModel";
 import { attachCookiesToResponse } from "../../utils/jwt";
 import sendPasswordResetToken from "../../utils/sendPasswordResetToken";
 import createHash from "../../utils/createHash";
+import passport from "passport";
+
+
 interface Userbody {
   username: string;
   password: string;
@@ -19,7 +22,8 @@ interface Userbody {
 }
 const origin = "http://localhost:3000";
     
-    const serveorigin = "http://localhost:8000/client/api";
+
+
 /**
  * Signs up a new user.
  * @param req - Express request object containing the username, email, and password.
@@ -222,10 +226,10 @@ async function Signin(req: Request, res: Response, next: NextFunction): Promise<
     const existingToken = await TokenModel.findOne({ user: user._id });
 
     if (existingToken) {
-      const { $isValid } = existingToken;
+      const { isValid } = existingToken;
       console.log("token existing");
 
-      if (!$isValid) {
+      if (!isValid) {
         throw new UnAuthorized("invalid credentials");
       }
       refreshToken = existingToken.refreshToken;
@@ -246,6 +250,9 @@ async function Signin(req: Request, res: Response, next: NextFunction): Promise<
     next(error);
   }
 }
+
+
+
 
 /**
  * ForgotPassword function is used to send a password reset token to the user's email address.
@@ -320,7 +327,9 @@ async function verifyPasswordResetToken(
     throw new Error(error);
   }
 }
+
  
+
 
 
 /**
@@ -377,6 +386,34 @@ async function updatePassword(
   }
 }
 
+
+
+async function GoogleAuth() {
+  passport.authenticate("google", {scope: ["profile", "email"]});
+}
+
+
+
+
+async function GoogleAuthCallback(req:Request, res:Response) {
+  passport.authenticate("google", { failureRedirect: origin });
+  if (req.user) {
+        // return res.status(200)
+        res.redirect(`http://localhost:3000/auth/signup`);
+      } else {
+        res.redirect(`http://localhost:3000`);
+      }
+}
+
+/**
+ * Returns the currently authenticated user.
+ * @param req - The Express request object.
+ * @param res - The Express response object.
+ * @returns The currently authenticated user, or an error response.
+ */
+function ShowCurrentUser(req: Request, res: Response) {
+  return res.status(httpStatus.OK).json({ user: req.user });
+}
 export {
   Signup,
   Signin,
@@ -384,4 +421,8 @@ export {
   forgotPassword,
   updatePassword,
   verifyPasswordResetToken,
+  GoogleAuth,
+  GoogleAuthCallback,
+  ShowCurrentUser,
 };
+  
