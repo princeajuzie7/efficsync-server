@@ -19,7 +19,7 @@ export default async function sendVerificationEmail({
   name: string;
   email: string;
   verificationToken: string;
-  origin: string;
+  origin: string | string[];
 }): Promise<SMTPTransport.SentMessageInfo> {
   // Construct the URL for the verification link.
   const verifyEmail = `${origin}/auth/verifyemail?token=${verificationToken}&email=${email}`;

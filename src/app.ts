@@ -19,12 +19,18 @@ config()
  */
 const app: Express = express();
 
+const clienturl = process.env.CLIENT_LIVE_URL;
+
+if (!clienturl) {
+  throw new Error("CLIENT_LIVE_URL is not defined");
+}
+
 /**
  * Sets the origins allowed to send requests to the Express application.
  * @param none
  * @returns none
  */
-const origin =  "http://localhost:3000";
+const origin = ["http://localhost:3000", clienturl];
 
 /**
  * Configures CORS settings for the Express application.
