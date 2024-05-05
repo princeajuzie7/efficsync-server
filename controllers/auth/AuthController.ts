@@ -21,80 +21,79 @@ interface Userbody {
   email: string;
   userdp: string;
 }
-const origin = "http://localhost:3000";
-    
 
+const ClientLiveUrl = process.env.CLIENT_LIVE_URL;
+const ClientLocalUrl = process.env.CLIENT_LOCAL_URL;
 
-/**
- * Signs up a new user.
- * @param req - Express request object containing the username, email, and password.
- * @param res - Express response object used to send the success message or error response.
- * @param next - Express next function used to handle errors.
- * @returns A response with a success message and a status code of 201 (Created) if the user is created successfully, otherwise an error response.
- * @throws BadRequestError if the email already exists.
- * @throws UnAuthorized if the provided credentials are invalid.
- */
-async function Signup(req: Request, res: Response, next: NextFunction) {
-  console.log("auth controller hit successfully");
-  const { username, email, password, userdp }: Userbody = req.body;
- 
-  const EmailAlreadyExist = await userModel.findOne({ email });
-
-  if (EmailAlreadyExist) {
-    return res.status(BAD_REQUEST).json({ message: "Email already exist" });
-    // throw new BadRequestError('Email already exist')
-  }
-
-
-  const verificationToken = crypto.randomBytes(40).toString("hex");
-  try {
-    const newUser = await userModel.create({
-      username,
-      email,
-      password,
-      verificationToken,
-      userdp,
-    });
-
-
-
-    await sendVerificationEmail({
-      name: newUser?.username,
-      email: newUser?.email,
-      verificationToken: newUser?.verificationToken,
-      origin,
-    });
-    
-   
-    const user = await userModel.findOne({ email });
-    
-      if (!user) {
-        console.log("incorrect email ");
-        throw new UnAuthorized("invalid credentials");
-      }
-    
-    const ispasswordCorrect = await user.comparePassword(password);
-    console.log(ispasswordCorrect, "ispasswordCorrect");
-    if (!ispasswordCorrect) {
-      console.log("password incorrect");
-      throw new UnAuthorized("invalid credentials");
-    }
-
-    
-   
-    res.status(httpStatus.CREATED).json({
-      message: "Success! Please check your mail to verify your account",
-    });
-    
-
-
-
-    log(newUser, "newUser");
-  } catch (error: Error | any) {
-    console.log(error);
-    next(error);
-  }
+if (!ClientLiveUrl || !ClientLocalUrl) {
+  throw new BadRequestError(' Client Local URL must be specified in the configuration file.');
 }
+const origin =
+  process.env.NODE_ENV === "production" ? ClientLiveUrl : ClientLocalUrl;
+    
+    /**
+       * Signs up a new user.
+       * @param req - Express request object containing the username, email, and password.
+       * @param res - Express response object used to send the success message or error response.
+       * @param next - Express next function used to handle errors.
+       * @returns A response with a success message and a status code of 201 (Created) if the user is created successfully, otherwise an error response.
+       * @throws BadRequestError if the email already exists.
+       * @throws UnAuthorized if the provided credentials are invalid.
+       */
+      async function Signup(req: Request, res: Response, next: NextFunction) {
+        console.log("auth controller hit successfully");
+        const { username, email, password, userdp }: Userbody = req.body;
+
+        const EmailAlreadyExist = await userModel.findOne({ email });
+
+        if (EmailAlreadyExist) {
+          return res
+            .status(BAD_REQUEST)
+            .json({ message: "Email already exist" });
+          // throw new BadRequestError('Email already exist')
+        }
+
+        const verificationToken = crypto.randomBytes(40).toString("hex");
+        try {
+          const newUser = await userModel.create({
+            username,
+            email,
+            password,
+            verificationToken,
+            userdp,
+          });
+
+          await sendVerificationEmail({
+            name: newUser?.username,
+            email: newUser?.email,
+            verificationToken: newUser?.verificationToken,
+            origin,
+          });
+
+          const user = await userModel.findOne({ email });
+
+          if (!user) {
+            console.log("incorrect email ");
+            throw new UnAuthorized("invalid credentials");
+          }
+
+          const ispasswordCorrect = await user.comparePassword(password);
+          console.log(ispasswordCorrect, "ispasswordCorrect");
+          if (!ispasswordCorrect) {
+            console.log("password incorrect");
+            throw new UnAuthorized("invalid credentials");
+          }
+
+          res.status(httpStatus.CREATED).json({
+            message: "Success! Please check your mail to verify your account",
+          });
+
+          log(newUser, "newUser");
+        } catch (error: Error | any) {
+          console.log(error);
+          next(error);
+        }
+      };
 
 /**
  * Verifies an email address by comparing the provided verification token with the stored token for the given email address.
