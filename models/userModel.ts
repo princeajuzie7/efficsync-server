@@ -26,6 +26,7 @@ interface UserDocument extends Document {
   verified: Date;
   passwordToken?: string;
   passwordTokenExpiration: Date | string;
+  userdp:string,
   comparePassword(userpassword: string): Promise<boolean>;
 }
 
@@ -57,6 +58,9 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>(
         message: "please provide valid email",
       },
     },
+    userdp: {
+      type: String,
+    },
     password: {
       type: String,
       require: [true, "please provide a password"],
@@ -66,7 +70,6 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>(
       type: Boolean,
       default: false,
     },
-
     verified: Date,
     passwordToken: {
       type: String,

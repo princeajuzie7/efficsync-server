@@ -19,6 +19,7 @@ interface Userbody {
   username: string;
   password: string;
   email: string;
+  userdp: string;
 }
 const origin = "http://localhost:3000";
     
@@ -35,7 +36,7 @@ const origin = "http://localhost:3000";
  */
 async function Signup(req: Request, res: Response, next: NextFunction) {
   console.log("auth controller hit successfully");
-  const { username, email, password }: Userbody = req.body;
+  const { username, email, password, userdp }: Userbody = req.body;
  
   const EmailAlreadyExist = await userModel.findOne({ email });
 
@@ -52,6 +53,7 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
       email,
       password,
       verificationToken,
+      userdp,
     });
 
 
@@ -79,31 +81,7 @@ async function Signup(req: Request, res: Response, next: NextFunction) {
     }
 
     
-     const tokenUser = createTokenUser(user);
-     let refreshToken = "";
-     const existingToken = await TokenModel.findOne({ user: user._id });
-
-     if (existingToken) {
-       const { $isValid } = existingToken;
-       console.log("token existing");
-
-       if (!$isValid) {
-         throw new UnAuthorized("invalid credentials");
-       }
-       refreshToken = existingToken.refreshToken;
-
-       attachCookiesToResponse({ res, user: tokenUser, refreshToken });
-       res.status(OK).json({ user: tokenUser });
-       return;
-     }
-
-     refreshToken = crypto.randomBytes(40).toString("hex");
-     const userAgent = req.headers["user-agent"];
-     const ip = req.ip;
-     const userToken = { refreshToken, ip, userAgent, user: user._id };
-     await TokenModel.create(userToken);
-    attachCookiesToResponse({ res, user: tokenUser, refreshToken });
-    
+   
     res.status(httpStatus.CREATED).json({
       message: "Success! Please check your mail to verify your account",
     });
